@@ -1,0 +1,76 @@
+(Task) 너는 이제 3D 게임을 위한 VFX를 디자인해야 돼. 다음의 규칙을 따라 VFX를 제작하도록 해. 
+제공된 이미지는 '{ORIGINAL_USER_PROMPT}' effect을 그린 것이며, 제공된 JSON은 다음과 같습니다:
+```json
+{FIRST_ANALYSIS_JSON}
+```
+이 JSON은 VFX내의 VFX component들과 각각의 component의 생김새 및 역할을 설명한 거야.
+
+다음은 참고해야 할 Mesh 데이터베이스 (mesh.csv) 내용이야:
+```csv
+{MESH_CSV_DATA}
+```
+
+다음은 참고해야 할 Texture 데이터베이스 (texture.csv) 내용이야:
+```csv
+{TEXTURE_CSV_DATA}
+```
+
+이제 각각의 component에 대해 component의 topology, texture, animation, layout을 정해야 돼. 위에서 제공된 Mesh 및 Texture 데이터베이스를 반드시 참고해야 해. 아래의 instruction을 따라가도록 해.
+
+(Topology Analysis) 각 component의 설명을 읽고 component에 가장 잘 부합하는 topolog를 찾도록 해. Component에 따라 Mesh, Horizontal Billboard, Vertical Billboard, Particle로 나눌 수 있어. Mesh는 부피감이 있거나 특정 형태의 VFX를 제작하는 데 좋아. 예를 들어 연기 구름, 빔 원기둥, 소드 슬래시 같이 형태가 있고 부피로 표현하기 좋은 것들. Horizontal Billboard와 Vertical Billboard는 기본적으로 판형 VFX여서 텍스쳐로 표현하기 좋은 것들이야. 마지막으로 파티클은 작은 입자들 혹은 trail로 표현하기 좋은 것들이야. 이펙트에서 가장 메인이 되는 component는 maincomponent라고 부를거야. maincomponent는 VFX내에 한개만 존재해.
+
+(Mesh and Texture Selection) 각 component에 대해 가장 해당 component를 표현하기 적합한 mesh와 texture를 찾을 거야. 위에서 제공된 mesh csv 파일 내용과 texture csv 파일 내용을 참고해야 해. Mesh 선택: Mesh 타입 component의 경우, 해당 component가 어떻게 생겼는지를 생각하고, 그것과 가장 일치하는 description을 mesh csv에서 찾아서 해당 mesh의 object_name을 반환하는 거야. Mesh의 object_name은 반드시 mesh csv의 object_name 열에 존재해야 해. HorizontalBillboard, VerticalBillboard, Particle의 경우 기본적으로 판형이므로, ComponentMeshName에는 'plane'을 기입하면 돼.
+
+(Texture) 모든 component 타입 (Mesh, HorizontalBillboard, VerticalBillboard, Particle)에 대해, 해당 component의 표면이 어떻게 보일지 (예: 날카로운 베기 자국, 에너지의 흐름, 스파크 입자 등)를 고려하여 가장 적합한 description을 texture csv에서 찾아 해당 texture의 이름 (예: texture_name)을 반환하는 거야. Texture의 이름은 반드시 texture csv의 texture_name 열에 존재해야 해.
+
+(Spatial Layout) 각 Component에 대해 spatial한 layout을 결정할거야. 각 component의 3d 상에서의 bounding box를생각해. Bounding box는 두 개의 벡터로 결정되는데 minimum(Vector3)과 maximum(Vector3)으로 결정하도록 해.
+
+(Temporal Layout) Target VFX의 전체 duration (VFXDuration, float)을 결정해. 최대 5초로 결정할 수 있어. Target VFX의 전체 duration이 결정되었다면, Target VFX를 구성하는 각 component들의 delay (ComponentDelay, float)와 duration (ComponentDuration, float)를 결정해. 예를 들어, 한 component가 ComponentDelay 1.1초, ComponentDuration 3.2초를 가졌다면, 그 component는 전체 VFX가 시작되고 1.1초 뒤에 나타나서 4.3초에 사라지는거야.
+
+(Animation) 각 component의 텍스처가 시간에 따라 어떻게 움직일지를 결정할 수 있어. Texture Scroll은 텍스처의 UV 좌표를 시간에 따라 이동시켜 애니메이션 효과를 주는 기능이야. ComponentTextureScroll은 2차원 벡터 (Vector2)로 표현되며, 각 축의 값은 -1.0에서 1.0 사이의 값을 가져. 예를 들어, (0.5, 0.0)은 텍스처가 U(가로) 방향으로 스크롤되는 것을 의미해. 값이 없거나 애니메이션이 필요 없으면 (0.0, 0.0)으로 설정해.
+
+(Format) 각 component에 대해 답변은 아래 포맷으로 하는거야.
+
+ComponentName: ??? (string, component의 이름)
+IsMain: ??? (boolean, 이 컴포넌트가 main component인지)
+ComponentType: ??? (string, Mesh, HorizontalBillboard, VerticalBillboard, Particle 중 하나 기입)
+ComponentMeshName: ??? (string, csv에서 찾은 적합한 mesh object_name. Billboard, particle은 그냥 plane 기입)
+ComponentTextureName: ??? (string, texture csv에서 찾은 적합한 texture_name 기입)
+ComponentBoundingBox: ??? (Vector3 2개, 이 component의 boundingbox의 depth, width, height를 포함하는 Vector3)
+ComponentDuration: ??? (float, 이 component의 전체 duration을 결정하며 전체 VFX의 길이보다는 짧아야 함)
+ComponentDelay: ??? (float, 이 component가 시작하기까지 지연시키는 시간이며 이 component의 타이밍을 결정)
+ComponentTextureScroll: ??? (Vector2, 텍스처의 UV 스크롤 속도, 예: (0.1, -0.05))
+
+예를 들어, component들이 모인 전체 VFX에 대한 답변은 이렇게 되는거야.
+
+VFXName: red explosion
+VFXDuration: 2.0
+ComponentName: explosion_core
+IsMain: True
+ComponentType: Mesh
+ComponentMeshName: Tornado1
+ComponentTextureName: Impact25
+ComponentBoundingBox: (0.0, 0.0, 0.0), (1.0, 1.2, 0.9)
+ComponentDuration: 1.1
+ComponentDelay: 0.9
+ComponentTextureScroll: (0.2, 0.0)
+ComponentName: explosion_smokes
+IsMain: False
+ComponentType: VerticalBillboard
+ComponentMeshName: plane
+ComponentTextureName: Flare30
+ComponentBoundingBox: (0.0, 0.0, 0.0), (1.0, 1.0, 0.9)
+ComponentDuration: 0.8
+ComponentDelay: 0.1
+ComponentTextureScroll: (0.0, 0.1)
+ComponentName: explosion_particles
+IsMain: False
+ComponentType: Particle
+ComponentMeshName: plane
+ComponentTextureName: FireEmbers
+ComponentBoundingBox: (0.0, 0.0, 0.0), (1.0, 1.0, 0.9)
+ComponentDuration: 0.8
+ComponentDelay: 0.1
+ComponentTextureScroll: (0.0, 0.0)
+
+위와 같은 포맷 이외의 다른 말은 일절 하면 안돼. 너의 답변을 파싱해서 다른 작업을 수행해야 하기 때문에 다른 말을 하게 되면 파싱을 할 수 없어져. 무조건 이 포맷을 지키고 다른 말은 일절 하지 마. 
